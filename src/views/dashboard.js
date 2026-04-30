@@ -22,7 +22,7 @@ export function renderDashboard(container) {
   // Top Bar
   const header = h('div', { className: 'dash-header' });
   const hLeft = h('div', {});
-  hLeft.appendChild(h('h2', { className: 'dash-title' }, store.school.name));
+  hLeft.appendChild(h('h2', { className: 'dash-title' }, [store.school.name, h('span', { style: { fontSize: '0.75rem', opacity: '0.5', marginLeft: '12px' } }, 'v2.1 Reactive')]));
   const classes = store.getAllClasses();
   hLeft.appendChild(h('div', { className: 'text-muted text-sm' }, `${store.grades.length} Grades · ${classes.length} Sections`));
   header.appendChild(hLeft);
