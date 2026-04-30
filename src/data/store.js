@@ -58,6 +58,7 @@ export const store = {
   logs: [],
   
   currentView: 'setup',
+  isOptimizing: false,
   setupStep: 1,
   dashboardGrade: null,
   dashboardSection: null,

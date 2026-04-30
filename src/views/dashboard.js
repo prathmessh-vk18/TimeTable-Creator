@@ -4,6 +4,19 @@ import { detectConflicts, calculateDashboardMetrics, getTeacherUtilizationData, 
 
 export function renderDashboard(container) {
   container.innerHTML = '';
+  
+  if (store.isOptimizing) {
+    const overlay = h('div', { className: 'loader-overlay' });
+    const lBox = h('div', { className: 'loader-container' });
+    lBox.appendChild(h('div', { className: 'loader-text' }, 'Optimising Schedule...'));
+    const fill = h('div', { className: 'loader-fill' });
+    lBox.appendChild(h('div', { className: 'loader-bar' }, fill));
+    overlay.appendChild(lBox);
+    container.appendChild(overlay);
+    setTimeout(() => { fill.style.width = '100%'; }, 50);
+    return;
+  }
+
   const page = h('div', { className: 'fade-in' });
 
   // Top Bar
@@ -17,22 +30,15 @@ export function renderDashboard(container) {
   const hRight = h('div', { className: 'flex gap-8' });
   hRight.appendChild(h('button', { className: 'btn btn-outline', onClick: () => { store.currentView = 'setup'; store.notify(); } }, 'Edit setup'));
   hRight.appendChild(h('button', { className: 'btn btn-primary', onClick: () => {
-    const overlay = h('div', { className: 'loader-overlay' });
-    const container = h('div', { className: 'loader-container' });
-    container.appendChild(h('div', { className: 'loader-text' }, 'Optimising Schedule...'));
-    const fill = h('div', { className: 'loader-fill' });
-    container.appendChild(h('div', { className: 'loader-bar' }, fill));
-    overlay.appendChild(container);
-    document.body.appendChild(overlay);
-
-    setTimeout(() => { fill.style.width = '100%'; }, 10);
-
+    store.isOptimizing = true;
+    store.notify();
+    
     setTimeout(() => {
       import('../engine/scheduler.js').then(m => {
         m.generateTimetable();
         detectConflicts();
         store.addLog('Timetable re-solved automatically.');
-        overlay.remove();
+        store.isOptimizing = false;
         store.notify();
       });
     }, 2000);
