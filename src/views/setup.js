@@ -238,7 +238,6 @@ function renderRooms(body) {
         if (cb.checked && !r.subjectIds.includes(s.id)) r.subjectIds.push(s.id);
         else if (!cb.checked) r.subjectIds = r.subjectIds.filter(v => v !== s.id);
         headerText.innerText = r.subjectIds.length ? `${r.subjectIds.length} Selected` : 'All Subjects';
-        store.notify();
       };
       
       item.onclick = (e) => { e.stopPropagation(); toggleSelection(); };

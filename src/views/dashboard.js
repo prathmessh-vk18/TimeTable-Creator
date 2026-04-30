@@ -17,12 +17,25 @@ export function renderDashboard(container) {
   const hRight = h('div', { className: 'flex gap-8' });
   hRight.appendChild(h('button', { className: 'btn btn-outline', onClick: () => { store.currentView = 'setup'; store.notify(); } }, 'Edit setup'));
   hRight.appendChild(h('button', { className: 'btn btn-primary', onClick: () => {
-    import('../engine/scheduler.js').then(m => {
-      m.generateTimetable();
-      detectConflicts();
-      store.addLog('Timetable re-solved automatically.');
-      store.notify();
-    });
+    const overlay = h('div', { className: 'loader-overlay' });
+    const container = h('div', { className: 'loader-container' });
+    container.appendChild(h('div', { className: 'loader-text' }, 'Optimising Schedule...'));
+    const fill = h('div', { className: 'loader-fill' });
+    container.appendChild(h('div', { className: 'loader-bar' }, fill));
+    overlay.appendChild(container);
+    document.body.appendChild(overlay);
+
+    setTimeout(() => { fill.style.width = '100%'; }, 10);
+
+    setTimeout(() => {
+      import('../engine/scheduler.js').then(m => {
+        m.generateTimetable();
+        detectConflicts();
+        store.addLog('Timetable re-solved automatically.');
+        overlay.remove();
+        store.notify();
+      });
+    }, 2000);
   } }, 'Re-solve ', svgIcon('refresh')));
   header.appendChild(hRight);
   page.appendChild(header);
@@ -39,7 +52,6 @@ export function renderDashboard(container) {
   mGrid.appendChild(metricCard('Slot Fill Rate', `${metrics.fillRate}%`, 'var(--primary-text)'));
   mGrid.appendChild(metricCard('Shared Subjects', metrics.sharedCount, 'var(--c-amber-txt)'));
   mGrid.appendChild(metricCard('Conflicts', store.conflicts.length, store.conflicts.length > 0 ? 'var(--c-red-txt)' : 'var(--c-green-txt)'));
-  mGrid.appendChild(metricCard('Weekly Savings', `₹${metrics.savings}`, 'var(--c-green-txt)'));
   mainCol.appendChild(mGrid);
 
   // Tabs for Grades & Sections
@@ -134,9 +146,6 @@ function heatmapBar(name, dailyUsage, subtext) {
   const row = h('div', { className: 'util-row', style: { marginBottom: '16px' } });
   const lbls = h('div', { className: 'util-labels', style: { display: 'flex', justifyContent: 'space-between', marginBottom: '6px' } });
   lbls.appendChild(h('span', { className: 'font-semibold' }, name));
-  
-  const avg = dailyUsage.length ? Math.round((dailyUsage.reduce((a,b)=>a+b, 0) / dailyUsage.length) * 100) : 0;
-  lbls.appendChild(h('span', { className: 'text-muted' }, `${avg}% avg`));
   row.appendChild(lbls);
   
   const blocks = h('div', { style: { display: 'flex', gap: '4px', width: '100%' } });

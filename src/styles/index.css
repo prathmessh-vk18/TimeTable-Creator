@@ -372,3 +372,14 @@ input:checked + .toggle-slider:before { transform: translateX(22px); }
 .font-semibold { font-weight: 600; }
 .text-muted { color: var(--color-secondary); }
 .text-sm { font-size: 0.875rem; }
+
+/* Loader Overlay */
+.loader-overlay {
+  position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(255,255,255,0.85); backdrop-filter: blur(8px);
+  z-index: 1000; display: flex; flex-direction: column; align-items: center; justify-content: center;
+}
+.loader-container { width: 300px; text-align: center; }
+.loader-bar { height: 6px; width: 100%; background: #E2E8F0; border-radius: 4px; overflow: hidden; margin-top: 20px; }
+.loader-fill { height: 100%; width: 0%; background: var(--color-cta); transition: width 2s cubic-bezier(0.4, 0, 0.2, 1); }
+.loader-text { font-weight: 700; font-size: 1.25rem; color: var(--color-primary); letter-spacing: -0.02em; }
