@@ -103,7 +103,24 @@ export function renderDashboard(container) {
   });
 
   // Room Util
-  sideCol.appendChild(h('h4', { className: 'font-semibold mb-16 mt-24' }, 'Room Utilisation'));
+  sideCol.appendChild(h('h4', { className: 'font-semibold mb-8 mt-24' }, 'Room Utilisation'));
+  
+  const legend = h('div', { className: 'flex items-center mb-16 text-muted', style: { fontSize: '0.7rem', gap: '8px' } });
+  legend.appendChild(h('span', {}, 'Usage:'));
+  const legendColors = [
+    { label: 'Low', opacity: 0.1 },
+    { label: 'Med', opacity: 0.4 },
+    { label: 'High', opacity: 0.8 }
+  ];
+  legendColors.forEach(lc => {
+    const box = h('div', { style: { width: '10px', height: '10px', borderRadius: '2px', background: `rgba(37, 99, 235, ${lc.opacity})` } });
+    const item = h('div', { style: { display: 'flex', alignItems: 'center', gap: '4px' } });
+    item.appendChild(box);
+    item.appendChild(h('span', {}, lc.label));
+    legend.appendChild(item);
+  });
+  sideCol.appendChild(legend);
+
   getRoomUtilizationData().forEach(r => {
     sideCol.appendChild(heatmapBar(r.name, r.dailyUsage, r.context));
   });
@@ -250,7 +267,11 @@ function renderTimetableGrid(container, classId) {
         }
         
         if (sess.isShared) {
-          const others = sess.sharedWith.map(id => id.split('-')[1]).join(', ');
+          const others = sess.sharedWith.map(id => {
+            const parts = id.split('-');
+            const g = store.grades.find(gr => gr.id === parts[0]);
+            return g ? `${g.name.replace('Grade ', '')}${parts[1]}` : parts[1];
+          }).join(', ');
           card.appendChild(h('div', { className: 'pc-shared' }, `Shared w/ ${others}`));
         }
         
