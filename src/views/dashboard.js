@@ -319,6 +319,12 @@ function showAssignmentDropdown(eOrRect, classId, day, period, sessionToReplace 
     if (availableTeacher) {
       topRow.appendChild(h('span', { className: 'dd-status dd-free' }, 'Free'));
       item.onclick = () => {
+        if (subj.isShared) {
+          menu.remove();
+          showSharedAssignmentModal(classId, day, period, subj, availableTeacher, sessionToReplace);
+          return;
+        }
+
         if (sessionToReplace) {
           // manually delete the old one without notify
           if (sessionToReplace.isShared) {
@@ -372,6 +378,119 @@ function showAssignmentDropdown(eOrRect, classId, day, period, sessionToReplace 
       }
     });
   }, 10);
+}
+
+function showSharedAssignmentModal(primaryClassId, day, period, subj, teacher, sessionToReplace) {
+  const overlay = h('div', { className: 'modal-overlay active' });
+  const card = h('div', { className: 'card', style: { width: '400px', maxWidth: '90vw' } });
+  
+  card.appendChild(h('h3', { className: 'card-title mb-8' }, `Share ${subj.name}`));
+  card.appendChild(h('p', { className: 'text-sm text-muted mb-16' }, `Select classes to join this session on ${day} P${period+1}.`));
+
+  const listContainer = h('div', { style: { maxHeight: '300px', overflowY: 'auto', marginBottom: '16px', border: '1px solid var(--border-color)', borderRadius: '8px', padding: '8px' } });
+
+  const selectedClasses = new Set([primaryClassId]);
+
+  store.getAllClasses().forEach(c => {
+    const cid = c.classId;
+    const isPrimary = cid === primaryClassId;
+    
+    let isFree = true;
+    let conflict = null;
+    const existingSess = store.timetable[cid]?.[day]?.[period];
+    if (existingSess) {
+      if (sessionToReplace && existingSess.id === sessionToReplace.id) {
+        isFree = true;
+      } else {
+        isFree = false;
+        conflict = store.getSubject(existingSess.subjectId)?.name || 'Busy';
+      }
+    }
+
+    const row = h('div', { style: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px', borderBottom: '1px solid #f1f5f9' } });
+    
+    const left = h('div', { className: 'flex items-center gap-8' });
+    const cbAttrs = { type: 'checkbox' };
+    if (isPrimary || !isFree) cbAttrs.disabled = 'true';
+    if (isPrimary) cbAttrs.checked = 'true';
+    
+    const cb = h('input', cbAttrs);
+    cb.style.accentColor = 'var(--color-cta)';
+    cb.style.cursor = (isPrimary || !isFree) ? 'not-allowed' : 'pointer';
+    
+    if (!isPrimary && isFree) {
+      if (sessionToReplace && sessionToReplace.isShared && sessionToReplace.sharedWith?.includes(cid)) {
+        cb.checked = true;
+        selectedClasses.add(cid);
+      }
+      
+      cb.onchange = (e) => {
+        if (e.target.checked) selectedClasses.add(cid);
+        else selectedClasses.delete(cid);
+      };
+    }
+    
+    left.appendChild(cb);
+    left.appendChild(h('span', { style: { fontWeight: 500, opacity: (!isFree && !isPrimary) ? 0.5 : 1 } }, `${c.gradeName}-${c.section}`));
+    row.appendChild(left);
+    
+    if (isPrimary) {
+      row.appendChild(h('span', { className: 'dd-status dd-free' }, 'Current'));
+    } else if (!isFree) {
+      row.appendChild(h('span', { className: 'dd-status dd-busy', style: { fontSize: '10px' } }, conflict));
+    }
+    
+    listContainer.appendChild(row);
+  });
+  
+  card.appendChild(listContainer);
+
+  const btns = h('div', { className: 'flex justify-between mt-16' });
+  btns.appendChild(h('button', { className: 'btn btn-ghost', onClick: () => overlay.remove() }, 'Cancel'));
+  
+  btns.appendChild(h('button', { className: 'btn btn-primary', onClick: () => {
+    if (sessionToReplace) {
+      if (sessionToReplace.isShared) {
+         const oldIds = [primaryClassId, ...(sessionToReplace.sharedWith || [])];
+         oldIds.forEach(id => { if (store.timetable[id]?.[day]) delete store.timetable[id][day][period]; });
+      } else {
+         delete store.timetable[primaryClassId][day][period];
+      }
+    }
+    
+    let freeRoom = store.rooms.find(r => {
+      let rBusy = false;
+      store.getAllClasses().forEach(c2 => {
+        if (store.timetable[c2.classId]?.[day]?.[period]?.roomId === r.id) rBusy = true;
+      });
+      return !rBusy && (r.subjectIds?.includes(subj.id) || !r.subjectIds || r.subjectIds.length===0);
+    });
+    if (!freeRoom) freeRoom = store.rooms.find(r => r.type === 'gym') || store.rooms[0];
+
+    const sessionId = uid();
+    const arrClasses = Array.from(selectedClasses);
+    arrClasses.forEach(cid => {
+      if (!store.timetable[cid]) store.timetable[cid] = {};
+      if (!store.timetable[cid][day]) store.timetable[cid][day] = {};
+      store.timetable[cid][day][period] = {
+        id: sessionId,
+        subjectId: subj.id,
+        teacherId: teacher.id,
+        roomId: freeRoom ? freeRoom.id : null,
+        isShared: true,
+        sharedWith: arrClasses.filter(id => id !== cid)
+      };
+    });
+
+    store.addLog(`${sessionToReplace ? 'Replaced with' : 'Assigned shared'} ${subj.name} on ${day} P${period+1} for ${arrClasses.length} classes`);
+    detectConflicts();
+    overlay.remove();
+    store.notify();
+  } }, 'Assign Shared'));
+
+  card.appendChild(btns);
+  overlay.appendChild(card);
+  document.body.appendChild(overlay);
 }
 
 function deleteSession(classId, day, period) {
